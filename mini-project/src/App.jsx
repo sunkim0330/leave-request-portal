@@ -1,9 +1,11 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./components/Authcontext";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 function App() {
-  const isLoggedIn = localStorage.getItem("loggedInEmployee") !== null;
+  const { isLoggedIn } = useAuth();
+
   return (
     <Routes>
       <Route

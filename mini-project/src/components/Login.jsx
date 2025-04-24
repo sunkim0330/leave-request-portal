@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "./Authcontext";
 import { sendOtpEmail, validateOtp } from "../otpService";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [employeeId, setEmployeeId] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -49,7 +51,7 @@ export default function Login() {
       });
 
       if (result.success) {
-        localStorage.setItem("loggedInEmployee", employeeId.trim());
+        login(employeeId.trim());
         navigate("/dashboard");
       } else {
         setError(result.message || "Invalid passcode. Please try again.");
@@ -85,13 +87,15 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? "Sending OTP…" : "Send OTP"}
+              {loading ? "Sending Passcode…" : "Send Passcode"}
             </button>
           </>
         ) : (
           <>
             <p className="text-sm text-gray-600 mb-4">{message}</p>
-            <label className="block mb-2 text-sm font-medium">Enter OTP</label>
+            <label className="block mb-2 text-sm font-medium">
+              Enter Passcode
+            </label>
             <input
               type="text"
               value={otpInput}
@@ -104,18 +108,19 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50"
             >
-              {loading ? "Verifying…" : "Verify OTP"}
+              {loading ? "Verifying…" : "Verify Passcode"}
             </button>
             <p className="mt-4 text-sm text-gray-500">
-              Didn’t get it?{" "}
+              Didn’t get the passcode?{" "}
               <button
                 className="text-blue-600 hover:underline"
                 onClick={() => {
-                  setOtpSent(false);
                   setOtpInput("");
+                  setError("");
+                  handleGetOtp();
                 }}
               >
-                Resend OTP
+                Resend Passcode
               </button>
             </p>
           </>
