@@ -1,33 +1,52 @@
-import { createContext, useState, useEffect, useContext } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useContext, useEffect } from "react";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [employee, setEmployee] = useState(() =>
-    localStorage.getItem("loggedInEmployee")
-  );
+  const [employee, setEmployee] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const isLoggedIn = Boolean(employee);
+  const login = async (employeeId) => {
+    try {
+      const empDoc = await getDoc(doc(db, "employees", employeeId));
+      if (empDoc.exists()) {
+        const employeeData = {
+          id: employeeId,
+          ...empDoc.data(),
+          isAdmin: empDoc.data().isAdmin || false,
+        };
+        setEmployee(employeeData);
+        setIsAdmin(employeeData.isAdmin);
+        localStorage.setItem("loggedInEmployee", employeeId);
+      }
+    } catch (error) {
+      console.error("Error fetching employee data in Auth:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    setEmployee(null);
+    setIsAdmin(false);
+    localStorage.removeItem("loggedInEmployee");
+  };
 
   useEffect(() => {
     const storedEmployee = localStorage.getItem("loggedInEmployee");
     if (storedEmployee) {
-      setEmployee(storedEmployee);
+      login(storedEmployee);
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  const login = (employeeId) => {
-    localStorage.setItem("loggedInEmployee", employeeId);
-    setEmployee(employeeId);
-  };
-
-  const logout = () => {
-    localStorage.removeItem("loggedInEmployee");
-    setEmployee(null);
-  };
-
   return (
-    <AuthContext.Provider value={{ isLoggedIn, employee, login, logout }}>
+    <AuthContext.Provider value={{ employee, isAdmin, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

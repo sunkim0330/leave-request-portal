@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
-import { useAuth } from "./Authcontext";
 import { db } from "../firebase";
+import LogoutButton from "./LogoutButton";
 import RequestFormModal from "./RequestFormModal";
+import { useAuth } from "./Authcontext";
 
 export default function Dashboard() {
-  const { employee, logout } = useAuth();
-  const navigate = useNavigate();
+  const { employee } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -19,7 +18,7 @@ export default function Dashboard() {
     try {
       const requestsQuery = query(
         collection(db, "ptoRequests"),
-        where("employeeId", "==", employee),
+        where("employeeId", "==", employee.id),
         orderBy("timestamp", "desc")
       );
       const requestResult = await getDocs(requestsQuery);
@@ -52,15 +51,7 @@ export default function Dashboard() {
           >
             Submit Request
           </button>
-          <button
-            onClick={() => {
-              logout();
-              navigate("/login");
-            }}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-          >
-            Log Out
-          </button>
+          <LogoutButton />
         </div>
       </div>
 

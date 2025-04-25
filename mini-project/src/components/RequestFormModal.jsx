@@ -8,7 +8,6 @@ export default function RequestFormModal({ onClose, onCreated }) {
   const { employee } = useAuth();
 
   const [formData, setFormData] = useState({
-    employeeId: employee,
     leaveType: "",
     startDate: "",
     endDate: "",
@@ -85,6 +84,8 @@ export default function RequestFormModal({ onClose, onCreated }) {
     setSubmitting(true);
     try {
       await addDoc(collection(db, "ptoRequests"), {
+        employeeId: employee.id,
+        employeeName: employee.name,
         ...formData,
         status: "Pending",
         timestamp: serverTimestamp(),
@@ -105,7 +106,7 @@ export default function RequestFormModal({ onClose, onCreated }) {
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-600 hover:text-gray-800"
         >
-          ✕
+          X
         </button>
         <h2 className="text-xl font-semibold mb-4">Submit PTO Request</h2>
 
