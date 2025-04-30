@@ -109,6 +109,7 @@ export default function RequestFormModal({ onClose, onCreated }) {
           X
         </button>
         <h2 className="text-xl font-semibold mb-4">Submit PTO Request</h2>
+        <h1 className="text-lg font-medium mb-4">Name: {employee.name}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

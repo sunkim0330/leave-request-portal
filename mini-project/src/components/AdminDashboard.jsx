@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  query,
+  orderBy,
+} from "firebase/firestore";
 import { db } from "../firebase";
+import LogoutButton from "./LogoutButton";
 
 export default function AdminDashboard() {
   const [requests, setRequests] = useState([]);
@@ -9,7 +17,9 @@ export default function AdminDashboard() {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const requestQuery = await getDocs(collection(db, "ptoRequests"));
+      const requestQuery = await getDocs(
+        query(collection(db, "ptoRequests"), orderBy("timestamp", "desc"))
+      );
       const data = requestQuery.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -96,9 +106,7 @@ export default function AdminDashboard() {
                         </button>
                       </>
                     ) : (
-                      <span className="text-gray-400 text-sm">
-                        {req.status}
-                      </span>
+                      <span className="text-gray-400 text-sm">no action</span>
                     )}
                   </td>
                 </tr>
