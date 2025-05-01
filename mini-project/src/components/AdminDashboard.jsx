@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import LogoutButton from "./LogoutButton";
+import StatusBadge from "./StatusBadge";
 
 export default function AdminDashboard() {
   const [requests, setRequests] = useState([]);
@@ -87,24 +88,28 @@ export default function AdminDashboard() {
                   <td className="px-4 py-2">
                     {new Date(req.endDate).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-2">{req.numDays}</td>
-                  <td className="px-4 py-2 capitalize">{req.status}</td>
+                  <td className="px-4 py-2 max-md:text-center">
+                    {req.numDays}
+                  </td>
+                  <td className="px-4 py-2">
+                    <StatusBadge status={req.status} />
+                  </td>
                   <td className="px-4 py-2 space-x-2">
                     {req.status === "Pending" ? (
-                      <>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                         <button
                           onClick={() => handleStatusChange(req.id, "Approved")}
-                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 sm:size-sm"
                         >
                           Approve
                         </button>
                         <button
                           onClick={() => handleStatusChange(req.id, "Denied")}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 sm:size-sm"
                         >
                           Deny
                         </button>
-                      </>
+                      </div>
                     ) : (
                       <span className="text-gray-400 text-sm">no action</span>
                     )}

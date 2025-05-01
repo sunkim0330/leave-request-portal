@@ -4,6 +4,7 @@ import { useAuth } from "./components/Authcontext";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import AdminDashboard from "./components/AdminDashboard";
+
 function App() {
   const { employee, loading, isAdmin } = useAuth();
 

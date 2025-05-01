@@ -129,7 +129,7 @@ export default function RequestFormModal({ onClose, onCreated }) {
             </select>
           </div>
 
-          <div className="flex space-x-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium">Start Date</label>
               <input
