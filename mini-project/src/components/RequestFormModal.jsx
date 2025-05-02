@@ -25,18 +25,20 @@ export default function RequestFormModal({ onClose, onCreated }) {
         numDays: calculateBusinessDays(startDate, endDate),
       }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.startDate, formData.endDate]);
 
-  const handleChange = (formName) => (e) => {
+  const handleChange = (formFieldName) => (e) => {
     setFormData((prev) => {
-      if (formName === "startDate") {
+      // Handle end date always being the same year and month as start date
+      if (formFieldName === "startDate") {
         const newStartDate = e.target.value;
         const currentEndDate = prev.endDate;
 
         let newEndDate = currentEndDate;
         if (currentEndDate) {
-          const startDate = new Date(newStartDate);
-          const endDate = new Date(currentEndDate);
+          const startDate = new Date(newStartDate + "T00:00:00");
+          const endDate = new Date(currentEndDate + "T00:00:00");
 
           endDate.setFullYear(startDate.getFullYear());
           endDate.setMonth(startDate.getMonth());
@@ -55,9 +57,10 @@ export default function RequestFormModal({ onClose, onCreated }) {
           endDate: newEndDate,
         };
       }
+
       return {
         ...prev,
-        [formName]: e.target.value,
+        [formFieldName]: e.target.value,
       };
     });
   };
@@ -71,13 +74,13 @@ export default function RequestFormModal({ onClose, onCreated }) {
       return;
     }
 
-    if (new Date(formData.endDate) < new Date(formData.startDate)) {
-      setError("End date cannot be before start date");
+    if (!formData.leaveType) {
+      setError("Please select a leave type");
       return;
     }
 
-    if (!formData.leaveType) {
-      setError("Please select a leave type");
+    if (!formData.reason) {
+      setError("Please enter a reason for the leave or type 'N/A'");
       return;
     }
 
@@ -104,7 +107,7 @@ export default function RequestFormModal({ onClose, onCreated }) {
       <div className="bg-white w-4/5 max-w-lg p-6 rounded-lg shadow relative">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-600 hover:text-gray-800"
+          className="absolute top-6 right-5 font-bold text-gray-600 hover:text-gray-800"
         >
           X
         </button>

@@ -1,15 +1,23 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import LogoutButton from "./LogoutButton";
 import RequestFormModal from "./RequestFormModal";
 import { useAuth } from "./Authcontext";
+import StatusBadge from "./StatusBadge";
+import StatusFilter from "./StatusFilter";
 
 export default function Dashboard() {
   const { employee } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  const filteredRequests = useMemo(() => {
+    if (statusFilter === "All") return requests;
+    return requests.filter((req) => req.status === statusFilter);
+  }, [requests, statusFilter]);
 
   const fetchRequests = useCallback(async () => {
     if (!employee) return;
@@ -41,13 +49,15 @@ export default function Dashboard() {
   }, [fetchRequests]);
 
   return (
-    <div className="min-h-screen p-6 bg-gray-50">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-3xl font-semibold">Your PTO Requests</h1>
-        <div className="flex gap-4">
+    <div className="min-h-screen px-4 py-6 sm:px-6 bg-gray-50">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-black-700">
+          {employee.name} - PTO Requests
+        </h1>
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button
             onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
           >
             Submit Request
           </button>
@@ -55,34 +65,47 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <StatusFilter value={statusFilter} onChange={setStatusFilter} />
+
       {loading ? (
-        <p>Loading…</p>
-      ) : requests.length === 0 ? (
-        <p className="text-gray-600">No requests yet.</p>
+        <p className="text-blue-500">Loading…</p>
+      ) : filteredRequests.length === 0 ? (
+        <p className="text-gray-500 italic">No requests yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white rounded-lg shadow">
+          <table className="min-w-full bg-white rounded-lg shadow text-sm sm:text-base">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="px-4 py-2 text-left">Type</th>
-                <th className="px-4 py-2 text-left">Start</th>
-                <th className="px-4 py-2 text-left">End</th>
-                <th className="px-4 py-2 text-left">Days</th>
-                <th className="px-4 py-2 text-left">Status</th>
+              <tr className="bg-blue-100 text-blue-900">
+                <th className="px-3 py-2 text-left">Type</th>
+                <th className="px-3 py-2 text-left">Start</th>
+                <th className="px-3 py-2 text-left">End</th>
+                <th className="px-3 py-2 text-left hidden sm:table-cell">
+                  Days
+                </th>
+                <th className="px-3 py-2 text-left">Status</th>
               </tr>
             </thead>
             <tbody>
-              {requests.map((req) => (
-                <tr key={req.id} className="border-b last:border-none">
-                  <td className="px-4 py-2">{req.leaveType}</td>
-                  <td className="px-4 py-2">
-                    {new Date(req.startDate).toLocaleDateString()}
+              {filteredRequests.map((req, index) => (
+                <tr
+                  key={req.id}
+                  className={`${
+                    index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                  } border-b last:border-none`}
+                >
+                  <td className="px-3 py-2">{req.leaveType}</td>
+                  <td className="px-3 py-2">
+                    {new Date(req.startDate + "T00:00:00").toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-2">
-                    {new Date(req.endDate).toLocaleDateString()}
+                  <td className="px-3 py-2">
+                    {new Date(req.endDate + "T00:00:00").toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-2">{req.numDays}</td>
-                  <td className="px-4 py-2 capitalize">{req.status}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell">
+                    {req.numDays}
+                  </td>
+                  <td>
+                    <StatusBadge status={req.status} />
+                  </td>
                 </tr>
               ))}
             </tbody>
