@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { calculateBusinessDays } from "../utils/calculateBusinessDays";
-import { useAuth } from "../components/Authcontext";
+import { useAuth } from "../components/AuthContext";
 
 export default function RequestFormModal({ onClose, onCreated }) {
   const { employee } = useAuth();

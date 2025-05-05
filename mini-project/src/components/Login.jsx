@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "./Authcontext";
+import { useAuth } from "./AuthContext";
 import { sendOtpEmail, validateOtp } from "../otpService";
 
 export default function Login() {

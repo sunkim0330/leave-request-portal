@@ -1,11 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  Timestamp,
-} from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { send } from "@emailjs/browser";
 import { db } from "./firebase";
 
