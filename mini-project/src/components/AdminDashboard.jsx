@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   collection,
   getDocs,
@@ -6,29 +6,58 @@ import {
   doc,
   query,
   orderBy,
+  getDoc,
+  where,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import FilterPanel from "./FilterPanel";
 import LogoutButton from "./LogoutButton";
 import StatusBadge from "./StatusBadge";
-import StatusFilter from "./StatusFilter";
 
 export default function AdminDashboard() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [filters, setFilters] = useState({
+    statuses: [],
+    leaveTypes: [],
+    startDate: "",
+    endDate: "",
+    days: "",
+  });
 
-  const filteredRequests = useMemo(() => {
-    if (statusFilter === "All") return requests;
-    return requests.filter((req) => req.status === statusFilter);
-  }, [requests, statusFilter]);
-
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const requestQuery = await getDocs(
-        query(collection(db, "ptoRequests"), orderBy("timestamp", "desc"))
+      const conditions = [];
+
+      if (filters.statuses.length) {
+        conditions.push(where("status", "in", filters.statuses));
+      }
+
+      if (filters.leaveTypes.length) {
+        conditions.push(where("leaveType", "in", filters.leaveTypes));
+      }
+
+      if (filters.startDate) {
+        conditions.push(where("startDate", ">=", filters.startDate));
+      }
+
+      if (filters.endDate) {
+        conditions.push(where("endDate", "<=", filters.endDate));
+      }
+
+      if (filters.days) {
+        conditions.push(where("numDays", "==", Number(filters.days)));
+      }
+
+      const requestQuery = query(
+        collection(db, "ptoRequests"),
+        ...conditions,
+        orderBy("timestamp", "desc")
       );
-      const data = requestQuery.docs.map((doc) => ({
+
+      const snapshot = await getDocs(requestQuery);
+      const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
@@ -39,19 +68,37 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [fetchRequests]);
 
   const handleStatusChange = async (id, newStatus) => {
     try {
       const requestDoc = doc(db, "ptoRequests", id);
+      const requestSnap = await getDoc(requestDoc);
+      if (!requestSnap.exists()) return;
+
+      const requestData = requestSnap.data();
+
       await updateDoc(requestDoc, { status: newStatus });
+
+      if (newStatus === "Denied") {
+        const employeeRef = doc(db, "employees", requestData.employeeId);
+        const employeeSnap = await getDoc(employeeRef);
+
+        if (employeeSnap.exists()) {
+          const currentBalance = employeeSnap.data().leaveBalance || 0;
+          await updateDoc(employeeRef, {
+            leaveBalance: currentBalance + (requestData.numDays || 0),
+          });
+        }
+      }
       fetchRequests();
     } catch (error) {
       console.error("Error updating request status:", error);
+      alert("Failed to update status. Check permissions.");
     }
   };
 
@@ -64,10 +111,14 @@ export default function AdminDashboard() {
         <LogoutButton />
       </div>
 
-      <StatusFilter value={statusFilter} onChange={setStatusFilter} />
+      <FilterPanel
+        onChange={setFilters}
+        leaveTypeOptions={["Sick", "Casual", "Vacation"]}
+        statusOptions={["Pending", "Approved", "Denied"]}
+      />
       {loading ? (
         <p className="text-blue-500">Loading requests...</p>
-      ) : filteredRequests.length === 0 ? (
+      ) : requests.length === 0 ? (
         <p className="text-gray-600 italic">No PTO requests found.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -87,7 +138,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredRequests.map((req, index) => (
+              {requests.map((req, index) => (
                 <tr
                   key={req.id}
                   className={`${

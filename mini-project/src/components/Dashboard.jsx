@@ -1,48 +1,64 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
+import { useAuth } from "./AuthContext";
+import FilterPanel from "./FilterPanel";
 import LogoutButton from "./LogoutButton";
 import RequestFormModal from "./RequestFormModal";
-import { useAuth } from "./AuthContext";
 import StatusBadge from "./StatusBadge";
-import StatusFilter from "./StatusFilter";
 
 export default function Dashboard() {
   const { employee } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("All");
-
-  const filteredRequests = useMemo(() => {
-    if (statusFilter === "All") return requests;
-    return requests.filter((req) => req.status === statusFilter);
-  }, [requests, statusFilter]);
+  const [filters, setFilters] = useState({
+    statuses: [],
+    leaveTypes: [],
+    startDate: "",
+    endDate: "",
+    days: "",
+  });
 
   const fetchRequests = useCallback(async () => {
     if (!employee) return;
     setLoading(true);
 
     try {
-      const requestsQuery = query(
+      const conditions = [where("employeeId", "==", employee.id)];
+
+      if (filters.leaveTypes.length) {
+        conditions.push(where("leaveType", "in", filters.leaveTypes));
+      }
+      if (filters.startDate) {
+        conditions.push(where("startDate", ">=", filters.startDate));
+      }
+      if (filters.endDate) {
+        conditions.push(where("endDate", "<=", filters.endDate));
+      }
+      if (filters.days) {
+        conditions.push(where("numDays", "==", Number(filters.days)));
+      }
+
+      const q = query(
         collection(db, "ptoRequests"),
-        where("employeeId", "==", employee.id),
+        ...conditions,
         orderBy("timestamp", "desc")
       );
-      const requestResult = await getDocs(requestsQuery);
 
-      setRequests(
-        requestResult.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-      );
-      setLoading(false);
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setRequests(data);
     } catch (error) {
       console.error("Error fetching requests:", error);
+    } finally {
       setLoading(false);
     }
-  }, [employee]);
+  }, [employee, filters]);
 
   useEffect(() => {
     fetchRequests();
@@ -54,6 +70,7 @@ export default function Dashboard() {
         <h1 className="text-2xl sm:text-3xl font-semibold text-black-700">
           {employee.name} - PTO Requests
         </h1>
+
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button
             onClick={() => setShowModal(true)}
@@ -64,12 +81,20 @@ export default function Dashboard() {
           <LogoutButton />
         </div>
       </div>
-
-      <StatusFilter value={statusFilter} onChange={setStatusFilter} />
+      <div className="flex flex-row gap-3 sm:gap-4 justify-between">
+        <p className="text-gray-500 italic font-semibold text-lg">
+          Leave Balance: {employee.leaveBalance} days
+        </p>
+        <FilterPanel
+          onChange={setFilters}
+          leaveTypeOptions={["Sick", "Casual", "Vacation"]}
+          statusOptions={["Pending", "Approved", "Denied"]}
+        />
+      </div>
 
       {loading ? (
         <p className="text-blue-500">Loading…</p>
-      ) : filteredRequests.length === 0 ? (
+      ) : requests.length === 0 ? (
         <p className="text-gray-500 italic">No requests yet.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -86,7 +111,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredRequests.map((req, index) => (
+              {requests.map((req, index) => (
                 <tr
                   key={req.id}
                   className={`${

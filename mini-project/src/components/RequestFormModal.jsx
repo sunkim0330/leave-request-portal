@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  updateDoc,
+  doc,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { calculateBusinessDays } from "../utils/calculateBusinessDays";
 import { useAuth } from "../components/AuthContext";
 
 export default function RequestFormModal({ onClose, onCreated }) {
-  const { employee } = useAuth();
+  const { employee, setEmployee } = useAuth();
 
   const [formData, setFormData] = useState({
     leaveType: "",
@@ -68,6 +74,7 @@ export default function RequestFormModal({ onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    const newBalance = employee.leaveBalance - formData.numDays;
 
     if (!formData.startDate || !formData.endDate) {
       setError("Please select a valid start and end date");
@@ -84,6 +91,11 @@ export default function RequestFormModal({ onClose, onCreated }) {
       return;
     }
 
+    if (formData.numDays > employee.leaveBalance) {
+      setError("You don't have enough leave balance remaining");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await addDoc(collection(db, "ptoRequests"), {
@@ -93,6 +105,16 @@ export default function RequestFormModal({ onClose, onCreated }) {
         status: "Pending",
         timestamp: serverTimestamp(),
       });
+
+      await updateDoc(doc(db, "employees", employee.id), {
+        leaveBalance: newBalance,
+      });
+
+      setEmployee((prev) => ({
+        ...prev,
+        leaveBalance: newBalance,
+      }));
+
       onCreated();
     } catch (error) {
       console.error("Error submitting request:", error);
@@ -113,7 +135,6 @@ export default function RequestFormModal({ onClose, onCreated }) {
         </button>
         <h2 className="text-xl font-semibold mb-4">Submit PTO Request</h2>
         <h1 className="text-lg font-medium mb-4">Name: {employee.name}</h1>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium">Leave Type</label>
@@ -140,6 +161,7 @@ export default function RequestFormModal({ onClose, onCreated }) {
                 value={formData.startDate}
                 onChange={handleChange("startDate")}
                 className="w-full px-3 py-2 border rounded"
+                min={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div className="flex-1">
