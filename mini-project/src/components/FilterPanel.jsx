@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function FilterPanel({
   onChange,
   statusOptions = [],
   leaveTypeOptions = [],
+  initialValues = {},
 }) {
   const [expanded, setExpanded] = useState(false);
   const [selectedStatuses, setSelectedStatuses] = useState([]);
@@ -34,6 +35,7 @@ export default function FilterPanel({
     setSelectedStatuses([]);
     setSelectedLeaveTypes([]);
     setStartDate("");
+    setEndDate("");
     setDays("");
     onChange({
       statuses: [],
@@ -43,6 +45,14 @@ export default function FilterPanel({
       days: "",
     });
   };
+
+  useEffect(() => {
+    setSelectedStatuses(initialValues.statuses || []);
+    setSelectedLeaveTypes(initialValues.leaveTypes || []);
+    setStartDate(initialValues.startDate || "");
+    setEndDate(initialValues.endDate || "");
+    setDays(initialValues.days || "");
+  }, [initialValues]);
 
   return (
     <div
@@ -143,6 +153,7 @@ export default function FilterPanel({
                 type="date"
                 className="w-full border rounded px-2 py-1"
                 value={endDate}
+                min={startDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>

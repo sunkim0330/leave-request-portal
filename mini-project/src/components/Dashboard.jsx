@@ -1,23 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
-import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
+import { useSearchParams } from "react-router-dom";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthContext";
 import FilterPanel from "./FilterPanel";
 import LogoutButton from "./LogoutButton";
 import RequestFormModal from "./RequestFormModal";
 import StatusBadge from "./StatusBadge";
+import SortingTable from "./SortingTable";
 
 export default function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { employee } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filters, setFilters] = useState({
-    statuses: [],
-    leaveTypes: [],
-    startDate: "",
-    endDate: "",
-    days: "",
+    statuses: searchParams.get("statuses")?.split(",") || [],
+    leaveTypes: searchParams.get("leaveTypes")?.split(",") || [],
+    startDate: searchParams.get("startDate") || "",
+    endDate: searchParams.get("endDate") || "",
+    days: searchParams.get("days") || "",
   });
 
   const fetchRequests = useCallback(async () => {
@@ -26,6 +29,10 @@ export default function Dashboard() {
 
     try {
       const conditions = [where("employeeId", "==", employee.id)];
+
+      if (filters.statuses.length) {
+        conditions.push(where("status", "in", filters.statuses));
+      }
 
       if (filters.leaveTypes.length) {
         conditions.push(where("leaveType", "in", filters.leaveTypes));
@@ -64,6 +71,24 @@ export default function Dashboard() {
     fetchRequests();
   }, [fetchRequests]);
 
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+
+    const params = new URLSearchParams();
+
+    if (newFilters.statuses.length)
+      params.set("statuses", newFilters.statuses.join(","));
+
+    if (newFilters.leaveTypes.length)
+      params.set("leaveTypes", newFilters.leaveTypes.join(","));
+
+    if (newFilters.startDate) params.set("startDate", newFilters.startDate);
+    if (newFilters.endDate) params.set("endDate", newFilters.endDate);
+    if (newFilters.days) params.set("days", newFilters.days);
+
+    setSearchParams(params);
+  };
+
   return (
     <div className="min-h-screen px-4 py-6 sm:px-6 bg-gray-50">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -81,61 +106,62 @@ export default function Dashboard() {
           <LogoutButton />
         </div>
       </div>
-      <div className="flex flex-row gap-3 sm:gap-4 justify-between">
+      <div className="flex flex-row gap-3 sm:gap-4 justify-between mb-4">
         <p className="text-gray-500 italic font-semibold text-lg">
           Leave Balance: {employee.leaveBalance} days
         </p>
-        <FilterPanel
-          onChange={setFilters}
-          leaveTypeOptions={["Sick", "Casual", "Vacation"]}
-          statusOptions={["Pending", "Approved", "Denied"]}
-        />
       </div>
-
+      <FilterPanel
+        onChange={handleFilterChange}
+        leaveTypeOptions={["Sick", "Casual", "Vacation"]}
+        statusOptions={["Pending", "Approved", "Denied"]}
+        initialValues={filters}
+      />
       {loading ? (
         <p className="text-blue-500">Loading…</p>
       ) : requests.length === 0 ? (
         <p className="text-gray-500 italic">No requests yet.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white rounded-lg shadow text-sm sm:text-base">
-            <thead>
-              <tr className="bg-blue-100 text-blue-900">
-                <th className="px-3 py-2 text-left">Type</th>
-                <th className="px-3 py-2 text-left">Start</th>
-                <th className="px-3 py-2 text-left">End</th>
-                <th className="px-3 py-2 text-left hidden sm:table-cell">
-                  Days
-                </th>
-                <th className="px-3 py-2 text-left">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((req, index) => (
-                <tr
-                  key={req.id}
-                  className={`${
-                    index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                  } border-b last:border-none`}
-                >
-                  <td className="px-3 py-2">{req.leaveType}</td>
-                  <td className="px-3 py-2">
-                    {new Date(req.startDate + "T00:00:00").toLocaleDateString()}
-                  </td>
-                  <td className="px-3 py-2">
-                    {new Date(req.endDate + "T00:00:00").toLocaleDateString()}
-                  </td>
-                  <td className="px-3 py-2 hidden sm:table-cell">
-                    {req.numDays}
-                  </td>
-                  <td>
-                    <StatusBadge status={req.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SortingTable
+          data={requests}
+          defaultSort={{ key: "timestamp", direction: "desc" }}
+          columns={[
+            { key: "leaveType", label: "Type", sortable: true },
+            { key: "startDate", label: "Start", sortable: true },
+            {
+              key: "endDate",
+              label: "End",
+              sortable: true,
+            },
+            {
+              key: "numDays",
+              label: "Days",
+              sortable: true,
+              className: "hidden sm:table-cell",
+            },
+            { key: "status", label: "Status", sortable: true },
+          ]}
+          renderRow={(req, index) => (
+            <tr
+              key={req.id}
+              className={`${
+                index % 2 === 0 ? "bg-gray-50" : "bg-white"
+              } border-b last:border-none`}
+            >
+              <td className="px-3 py-2">{req.leaveType}</td>
+              <td className="px-3 py-2">
+                {new Date(req.startDate + "T00:00:00").toLocaleDateString()}
+              </td>
+              <td className="px-3 py-2">
+                {new Date(req.endDate + "T00:00:00").toLocaleDateString()}
+              </td>
+              <td className="px-3 py-2 hidden sm:table-cell">{req.numDays}</td>
+              <td className="px-3 py-2">
+                <StatusBadge status={req.status} />
+              </td>
+            </tr>
+          )}
+        />
       )}
 
       {showModal && (
